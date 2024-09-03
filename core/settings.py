@@ -6,7 +6,7 @@ SECRET_KEY = "django-insecure-0u$!2m0fvb9_q#_oq21-kc1&#lc0z@$mqnyin&q93!&e&9=hy9
 
 DEBUG = True
 
-AUTH_USER_MODEL = 'acount.User'
+AUTH_USER_MODEL = 'base.CustomUser'
 
 ALLOWED_HOSTS = []
 
@@ -19,6 +19,8 @@ REST_FRAMEWORK = {
 
 
 INSTALLED_APPS = [
+    'material',
+    'material.admin',
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -30,8 +32,10 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_yasg',
     "acount",
-    "auth",
+    "base",
     'phonenumber_field',
+
+
 ]
 
 MIDDLEWARE = [
@@ -95,7 +99,7 @@ SIMPLE_JWT = {
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite1",
+        "NAME": BASE_DIR / "db.sqlite2",
     }
 }
 

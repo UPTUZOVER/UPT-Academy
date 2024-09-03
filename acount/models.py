@@ -53,7 +53,26 @@ AUTH_PROVIDERS = {
     'email': 'email'
 }
 
+
+
+from django.contrib.auth.models import PermissionsMixin, AbstractBaseUser, Group, Permission
 class User(AbstractBaseUser, PermissionsMixin):
+    groups = models.ManyToManyField(
+        Group,
+        related_name='custom_user_groups',  # Change this to a unique name
+        blank=True,
+        help_text=(
+            'The groups this user belongs to. A user will get all permissions granted to each of their groups.'),
+        related_query_name='custom_user',
+    )
+    user_permissions = models.ManyToManyField(
+        Permission,
+        related_name='custom_user_permissions',  # Change this to a unique name
+
+        blank=True,
+        help_text=('Specific permissions for this user.'),
+        related_query_name='custom_user',
+    )
     username = models.CharField(max_length=255, unique=True, db_index=True)
     email = models.EmailField(max_length=255, unique=True, db_index=True)
     first_name = models.CharField(max_length=255)
@@ -82,6 +101,3 @@ class User(AbstractBaseUser, PermissionsMixin):
             'refresh': str(refresh),
             'access': str(refresh.access_token)
         }
-
-
-
