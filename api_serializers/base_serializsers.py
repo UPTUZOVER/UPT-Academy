@@ -8,154 +8,82 @@ from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
 from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth import get_user_model
-
-
 User = get_user_model()
-
-CustomUser = get_user_model()
-
-
-
+CustomUser: object = get_user_model()
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
 
-CustomUser = get_user_model()
 
+class CustomUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'user_type']
 
-class PupilRegisterSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(max_length=10)
-    first_name = serializers.CharField(max_length=100)
-    last_name = serializers.CharField(max_length=100)
-    phone_number = serializers.CharField()
-    password = serializers.CharField(write_only=True)
-    age = serializers.IntegerField()
-    address = serializers.CharField(max_length=255, allow_blank=True, required=False)
-    gmail = serializers.EmailField(required=False)
-    image = serializers.ImageField(required=False)
-    status = serializers.ChoiceField(choices=Pupil.STATUS_CHOICES, default='active')
-    user_type = serializers.CharField(read_only=True, default='pupil')
+class PupilSerializer(serializers.ModelSerializer):
+    user = CustomUserSerializer()
 
     class Meta:
         model = Pupil
         fields = [
-            'username', 'first_name', 'last_name', 'phone_number', 'password',
-            'age', 'address', 'gmail', 'image', 'status', 'user_type'
+            'id', 'user',  'first_name', 'last_name',
+            'address', 'phone_number', 'age', 'status', 'gmail',
+            'image', 'created_on', 'updated_on'
         ]
 
-
-    def validate_phone_number(self, value):
-        if Pupil.objects.filter(phone_number=value).exists():
-            raise serializers.ValidationError("Bu telefon raqam allaqachon mavjud.")
-        return value
-
-
+    # Nested User'ni yaratish uchun custom create method
     def create(self, validated_data):
-        user_data = {
-            'username': validated_data.pop('username'),
-            'first_name': validated_data.pop('first_name'),
-            'last_name': validated_data.pop('last_name'),
-            'phone_number': validated_data.pop('phone_number'),
-            'password': validated_data.pop('password'),
-        }
-
-        if CustomUser.objects.filter(phone_number=user_data['phone_number']).exists():
-            raise serializers.ValidationError({'phone_number': 'Bu telefon raqam allaqachon mavjud.'})
-
-        user = CustomUser.objects.create_user(**user_data)
-        user.set_password(user_data['password'])
-        user.save()
-
+        user_data = validated_data.pop('user')
+        user = CustomUser.objects.create(**user_data)
         pupil = Pupil.objects.create(user=user, **validated_data)
         return pupil
 
+    # Nested User update uchun custom update method
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user')
+        user = instance.user
+
+        # CustomUser modelini yangilash
+        instance.user.username = user_data.get('username', user.username)
+        instance.user.email = user_data.get('email', user.email)
+        instance.user.user_type = user_data.get('user_type', user.user_type)
+        instance.user.save()
+
+        # Pupil modelini yangilash
+        instance.username = validated_data.get('username', instance.username)
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.last_name = validated_data.get('last_name', instance.last_name)
+        instance.address = validated_data.get('address', instance.address)
+        instance.phone_number = validated_data.get('phone_number', instance.phone_number)
+        instance.age = validated_data.get('age', instance.age)
+        instance.status = validated_data.get('status', instance.status)
+        instance.gmail = validated_data.get('gmail', instance.gmail)
+        instance.image = validated_data.get('image', instance.image)
+        instance.save()
+
+        return instance
+
+
+
+
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField(required=True)
+    username_or_email = serializers.CharField(required=True, allow_blank=False)
     password = serializers.CharField(required=True, write_only=True)
 
-    def validate_username(self, value):
-        if not value:
-            raise serializers.ValidationError(_("Username kiritilishi kerak."))
-        return value
-
-    def validate_password(self, value):
-        if not value:
-            raise serializers.ValidationError(_("Parol kiritilishi kerak."))
-        if len(value) < 8:
-            raise serializers.ValidationError(_("Parol uzunligi kamida 8 ta belgidan iborat bo'lishi kerak."))
-        if not any(char.isdigit() for char in value):
-            raise serializers.ValidationError(_("Parol kamida bitta raqamni o'z ichiga olishi kerak."))
-        if not any(char.isalpha() for char in value):
-            raise serializers.ValidationError(_("Parol kamida bitta harfni o'z ichiga olishi kerak."))
-        return value
-
     def validate(self, attrs):
-        username = attrs.get('username')
+        username_or_email = attrs.get('username_or_email')
         password = attrs.get('password')
 
-        user = authenticate(username=username, password=password)
-        if not user:
-            raise serializers.ValidationError(_("Login yoki parol noto'g'ri."))
+        # Email yoki username asosida foydalanuvchini autentifikatsiya qilish
+        user = None
+        if '@' in username_or_email:
+            user = authenticate(email=username_or_email, password=password)
+        else:
+            user = authenticate(username=username_or_email, password=password)
+
+        if user is None:
+            raise serializers.ValidationError(_('Invalid login credentials.'))
 
         attrs['user'] = user
         return attrs
-
-
-class VerifyUsernameAndPasswordSerializer(serializers.Serializer):
-    username = serializers.CharField(min_length=2)
-    current_password = serializers.CharField(write_only=True, min_length=6, max_length=68)
-
-    class Meta:
-        fields = ['username', 'current_password']
-
-    def validate(self, attrs):
-        username = attrs.get('username')
-        current_password = attrs.get('current_password')
-
-        try:
-            user = CustomUser.objects.get(username=username)
-        except CustomUser.DoesNotExist:
-            raise serializers.ValidationError(_("Foydalanuvchi bu username bilan topilmadi."))
-
-        if not user.check_password(current_password):
-            raise serializers.ValidationError(_("Joriy parol noto'g'ri."))
-
-        return attrs
-
-class SetNewPasswordSerializer(serializers.Serializer):
-    new_password = serializers.CharField(min_length=6, max_length=68, write_only=True)
-    confirm_password = serializers.CharField(min_length=6, max_length=68, write_only=True)
-    token = serializers.CharField(min_length=1, write_only=True)
-    uidb64 = serializers.CharField(min_length=1, write_only=True)
-
-    class Meta:
-        fields = ['new_password', 'confirm_password', 'token', 'uidb64']
-
-    def validate(self, attrs):
-        new_password = attrs.get('new_password')
-        confirm_password = attrs.get('confirm_password')
-
-        if new_password != confirm_password:
-            raise serializers.ValidationError(_("Yangi parollar mos kelmadi."))
-
-        try:
-            token = attrs.get('token')
-            uidb64 = attrs.get('uidb64')
-
-            # Decode the user ID
-            id = force_str(urlsafe_base64_decode(uidb64))
-            user = CustomUser.objects.get(id=id)
-
-            # Check the validity of the token
-            if not PasswordResetTokenGenerator().check_token(user, token):
-                raise AuthenticationFailed(_('Parolni tiklash havolasi yaroqsiz'), 401)
-
-            # Set the new password
-            user.set_password(new_password)
-            user.save()
-
-            return user
-        except Exception as e:
-            raise AuthenticationFailed(_('Parolni tiklash havolasi yaroqsiz'), 401)
-

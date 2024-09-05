@@ -18,6 +18,8 @@ class CustomUser(AbstractUser):
             ('admin', _('Administrator')),
         )
     user_type = models.CharField(max_length=10,choices=user_type_choices,default='pupil',verbose_name=_("User Type"))
+
+
     class Meta:
         verbose_name = _("Custom User")
         verbose_name_plural = _("Custom Users")
@@ -175,7 +177,7 @@ class Pupil(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, verbose_name=_("User"))
-    username = models.CharField(max_length=10, unique=True, verbose_name=_("Username"))
+    username = models.CharField(max_length=10, unique=True, verbose_name=_("Username"), null=True, blank=True)
     first_name = models.CharField(max_length=100, verbose_name=_("First Name"))
     last_name = models.CharField(max_length=100, verbose_name=_("Last Name"))
     address = models.CharField(max_length=255, blank=True, null=True, verbose_name=_("Address"))
