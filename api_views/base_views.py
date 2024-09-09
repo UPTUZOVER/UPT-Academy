@@ -1,15 +1,11 @@
 from rest_framework import generics, permissions
-from rest_framework.response import Response
-from rest_framework import status
 from base.models import Pupil
 from api_serializers.base_serializsers import PupilSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import status
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
-from base.models import CustomUser
 from rest_framework.views import APIView
 
 

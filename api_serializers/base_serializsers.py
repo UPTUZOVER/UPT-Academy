@@ -1,17 +1,10 @@
-from rest_framework import serializers
-from django.contrib.auth import get_user_model
 from base.models import Teacher, Pupil, Parent, Administrator
 from django.contrib.auth import authenticate
 from django.utils.translation import gettext_lazy as _
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.utils.http import urlsafe_base64_decode
-from django.utils.encoding import force_str
-from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth import get_user_model
 User = get_user_model()
 CustomUser: object = get_user_model()
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
 
 
 
@@ -31,25 +24,23 @@ class PupilSerializer(serializers.ModelSerializer):
             'image', 'created_on', 'updated_on'
         ]
 
-    # Nested User'ni yaratish uchun custom create method
+
     def create(self, validated_data):
         user_data = validated_data.pop('user')
         user = CustomUser.objects.create(**user_data)
         pupil = Pupil.objects.create(user=user, **validated_data)
         return pupil
 
-    # Nested User update uchun custom update method
+
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user')
         user = instance.user
 
-        # CustomUser modelini yangilash
         instance.user.username = user_data.get('username', user.username)
         instance.user.email = user_data.get('email', user.email)
         instance.user.user_type = user_data.get('user_type', user.user_type)
         instance.user.save()
 
-        # Pupil modelini yangilash
         instance.username = validated_data.get('username', instance.username)
         instance.first_name = validated_data.get('first_name', instance.first_name)
         instance.last_name = validated_data.get('last_name', instance.last_name)
@@ -75,7 +66,6 @@ class LoginSerializer(serializers.Serializer):
         username_or_email = attrs.get('username_or_email')
         password = attrs.get('password')
 
-        # Email yoki username asosida foydalanuvchini autentifikatsiya qilish
         user = None
         if '@' in username_or_email:
             user = authenticate(email=username_or_email, password=password)

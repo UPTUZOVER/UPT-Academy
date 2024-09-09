@@ -114,7 +114,6 @@ class SetNewPasswordSerializer(serializers.Serializer):
             password = attrs.get('password')
             token = attrs.get('token')
             uidb64 = attrs.get('uidb64')
-
             id = force_str(urlsafe_base64_decode(uidb64))
             user = User.objects.get(id=id)
 
